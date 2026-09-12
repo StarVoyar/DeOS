@@ -1,6 +1,6 @@
 # Build files
 build/
 
-# USB random folders
+# Windows system folders
 System Volume Information/
 $RECYCLE.BIN/
