@@ -5,7 +5,7 @@ IMAGE := $(OUTPUT_DIR)/DeOS.img
 ASM_SOURCES := $(shell find $(SRC_DIR) -type f -name '*.asm')
 ASM_BINARIES := $(patsubst $(SRC_DIR)/%.asm,$(OUTPUT_DIR)/%.bin,$(ASM_SOURCES))
 
-BOOTLOADER := $(OUTPUT_DIR)/bootloader/bootloader.bin
+BOOTLOADER := $(OUTPUT_DIR)/bootloader/stage1.bin
 
 .PHONY: all build install image debug clean
 
