@@ -1,5 +1,5 @@
 use16 ; Use 16-bit instructions
-org 0x7C00 ; Load the boot sector at 0x7C00
+org 0x600 ; Load the boot sector at 0x600
 
 ; LBA packet structure
 lba_packet equ 07E00h ; Set the LBA packet address to 0x7E00
@@ -55,6 +55,17 @@ macro panic message {
 
   push cs ; Push the current code segment onto the stack
   pop ds ; Set the data segment to the current code segment
+  call .relocate ; Call relocation function
+
+.relocate:
+  pop si ; Pop the return address into si
+  sub si, .relocate - .start ; Convert the address to an offset from start
+  mov di, 0x500 ; Set the destination offset to 0x500
+  mov cx, 128 ; Set the word count to 128
+  repnz stosw ; Store ax at es:di and repeat while cx is not zero
+  mov cx, 256 ; Set the word count to 256
+  repnz movsw ; Copy words from ds:si to es:di and repeat while cx is not zero
+  jmp 0:.check_disk ; Jump to check_disk function
 
 .check_disk:
   mov byte [boot_drive], dl ; Store the BIOS boot drive number
