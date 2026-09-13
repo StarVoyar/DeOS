@@ -19,7 +19,8 @@ int main(int argc, char **argv) {
   int bootloader_file_descriptor;
   int read_bytes;
 
-  // Check if fewer than 3 arguments were provided
+  // Check whether the required disk image and bootloader arguments were
+  // provided
   if (argc < 3) {
     printf("[Error]: Not enough arguments! \n");
     exit(-1);
@@ -31,19 +32,20 @@ int main(int argc, char **argv) {
   printf("Reading disk image... \n");
   disk_file_descriptor = open(disk_file_name, O_RDONLY);
 
-  // Check if the disk image failed to open
+  // Stop if the disk image could not be opened for reading
   if (disk_file_descriptor == -1) {
     printf("[Error]: Failed to open disk image! \n");
     exit(-2);
   }
 
-  // Read one sector from the disk image
+  // Read the first sector to advance past the boot sector
   if (read(disk_file_descriptor, data, SECTOR_SIZE) == -1) {
     close(disk_file_descriptor);
     printf("[Error]: Failed to read disk image! \n");
     exit(-3);
   }
 
+  // Scan the disk image sector by sector for the second-stage magic bytes
   for (sector = 1; sector < (10 * 1024 * 1024) / SECTOR_SIZE; ++sector) {
     printf("Checking sector: %d... \n", sector);
     read_bytes = read(disk_file_descriptor, data, SECTOR_SIZE);
@@ -53,12 +55,15 @@ int main(int argc, char **argv) {
       exit(-4);
     }
 
+    // Stop if the end of the disk image was reached before finding the magic
+    // bytes
     if (read_bytes == 0) {
       close(disk_file_descriptor);
       printf("[Error]: Failed to find magic bytes! \n");
       exit(-5);
     }
 
+    // Check whether the sector begins with the second-stage magic bytes
     if (data[0] == 0xF4 && data[1] == 0x1C) {
       printf("Found magic bytes at sector: %d! \n", sector);
       second_stage_sector = sector;
@@ -67,13 +72,15 @@ int main(int argc, char **argv) {
   }
   close(disk_file_descriptor);
 
+  // Open the bootloader binary so it can be written to the disk image
   bootloader_file_descriptor = open(bootloader_filename, O_RDONLY);
-  // Check if the bootloader failed to open
+  // Stop if the bootloader could not be opened
   if (bootloader_file_descriptor == -1) {
     printf("[Error]: Failed to open bootloader! \n");
     exit(-6);
   }
 
+  // Read the bootloader sector into the data buffer
   if (read(bootloader_file_descriptor, data, SECTOR_SIZE) == -1) {
     printf("[Error]: Failed to read bootloader file! \n");
     exit(-7);
@@ -83,13 +90,16 @@ int main(int argc, char **argv) {
 
   // TODO: Write the starting LBA of the second stage into the bootloader
 
+  // Open the disk image for writing the bootloader
   disk_file_descriptor = open(disk_file_name, O_WRONLY);
 
+  // Stop if the disk image could not be opened for writing
   if (disk_file_descriptor == -1) {
     printf("[Error]: Failed to open disk image for writing! \n");
     exit(-8);
   }
 
+  // Write the bootloader data to the beginning of the disk image
   if (write(disk_file_descriptor, data, 0x1C0) != 0x1C0) {
     printf("[Error]: Failed to write bootloader! \n");
     close(disk_file_descriptor);
