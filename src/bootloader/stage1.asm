@@ -90,7 +90,7 @@ macro panic message {
   mov word [lba_packet.sector_count], 1 ; Set number of sectors to read to 1
   mov word [lba_packet.offset], 0 ; Set destination offset to 0x0000
   mov word [lba_packet.segment], 80h ; Set the destination memory segment to 0x0080
-  mov word [lba_packet.sector0], 2 ; Set starting LBA bits 0-15 to 2
+  mov word [lba_packet.sector0], 88 ; Set starting LBA bits 0-15 to 88
   mov word [lba_packet.sector1], 0 ; Set starting LBA bits 16-31 to 0
   mov word [lba_packet.sector2], 0 ; Set starting LBA bits 32-47 to 0
   mov word [lba_packet.sector3], 0 ; Set starting LBA bits 48-63 to 0
@@ -173,6 +173,7 @@ _print:
 newline?: db 1 ; 1 = print newline, 0 = suppress newline
 boot_drive: db 0 ; Define storage for the BIOS boot drive number
 magic_bytes: db 0F4h, 1Ch ; Define the bootloader magic bytes
+stage_2_start: dd 0xFFFFFFFF ; Define starting address of stage 2
 
 ; Strings
 panic_prefix: db '[Error]: ', 0
