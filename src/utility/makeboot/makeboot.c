@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -49,6 +50,7 @@ int main(int argc, char **argv) {
   for (sector = 1; sector < (10 * 1024 * 1024) / SECTOR_SIZE; ++sector) {
     printf("Checking sector: %d... \n", sector);
     read_bytes = read(disk_file_descriptor, data, SECTOR_SIZE);
+
     if (read_bytes == -1) {
       close(disk_file_descriptor);
       printf("[Error]: Failed to read disk image! \n");
@@ -70,10 +72,19 @@ int main(int argc, char **argv) {
       break;
     }
   }
+
+  // Stop if the second stage could not be found
+  if (second_stage_sector == -1) {
+    close(disk_file_descriptor);
+    printf("[Error]: Failed to find second stage! \n");
+    exit(-5);
+  }
+
   close(disk_file_descriptor);
 
   // Open the bootloader binary so it can be written to the disk image
   bootloader_file_descriptor = open(bootloader_filename, O_RDONLY);
+
   // Stop if the bootloader could not be opened
   if (bootloader_file_descriptor == -1) {
     printf("[Error]: Failed to open bootloader! \n");
@@ -83,12 +94,14 @@ int main(int argc, char **argv) {
   // Read the bootloader sector into the data buffer
   if (read(bootloader_file_descriptor, data, SECTOR_SIZE) == -1) {
     printf("[Error]: Failed to read bootloader file! \n");
+    close(bootloader_file_descriptor);
     exit(-7);
   }
 
   close(bootloader_file_descriptor);
 
-  // TODO: Write the starting LBA of the second stage into the bootloader
+  // Store the second-stage starting LBA in the bootloader
+  memcpy(data + 0xD2, &second_stage_sector, 4);
 
   // Open the disk image for writing the bootloader
   disk_file_descriptor = open(disk_file_name, O_WRONLY);
@@ -105,7 +118,9 @@ int main(int argc, char **argv) {
     close(disk_file_descriptor);
     exit(-9);
   }
+
   close(disk_file_descriptor);
+
   printf("Bootloader installed, second stage starts at LBA: %d \n",
          second_stage_sector);
 }

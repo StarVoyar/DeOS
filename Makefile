@@ -9,7 +9,8 @@ ASM_BINARIES := $(patsubst $(SRC_DIR)/%.asm,$(OUTPUT_DIR)/%.bin,$(ASM_SOURCES))
 C_SOURCES := $(shell find $(SRC_DIR) -type f -name '*.c')
 C_BINARIES := $(patsubst $(SRC_DIR)/%.c,$(OUTPUT_DIR)/%.exe,$(C_SOURCES))
 
-BOOTLOADER := $(OUTPUT_DIR)/bootloader/stage1.bin
+STAGE1 := $(OUTPUT_DIR)/bootloader/stages/stage1.bin
+STAGE2 := $(OUTPUT_DIR)/bootloader/stages/stage2.bin
 MAKEBOOT := $(OUTPUT_DIR)/utility/makeboot/makeboot.exe
 
 .PHONY: all build install image debug clean
@@ -46,22 +47,9 @@ image: build
 	mkdir -p $(DIST_DIR)
 	dd if=/dev/zero of=$(IMAGE) bs=1048576 count=10
 	sgdisk --clear --new=1:2048:+8M --typecode=1:EF00 $(IMAGE)
-	dd if=$(BOOTLOADER) of=$(IMAGE) bs=512 seek=0 conv=notrunc
-	sudo losetup -D
-	sudo losetup -fP --direct-io=off $(IMAGE)
-	### TODO: Make second.bin creation automatic ####
-	printf '\364\034Hello, World!' > build/second.bin
-	#################################################
-	LOOP=$$(losetup -a | grep $(IMAGE) | cut -d: -f1); \
-	sudo mkfs.vfat -I -F 16 -n EFI_SYSTEM $$LOOP; \
-	mkdir -p $(OUTPUT_DIR)/img; \
-	sudo mount -t vfat $$LOOP $(OUTPUT_DIR)/img; \
-	sudo mkdir -p $(OUTPUT_DIR)/img/BIOS/BOOT; \
-	sudo cp $(OUTPUT_DIR)/second.bin $(OUTPUT_DIR)/img/BIOS/BOOT/STAGE2.BIN; \
-	sudo umount $(OUTPUT_DIR)/img; \
-	rmdir $(OUTPUT_DIR)/img
-	$(MAKEBOOT) $(IMAGE) $(BOOTLOADER)
-	sudo losetup -D
+	dd if=$(STAGE1) of=$(IMAGE) bs=512 seek=0 conv=notrunc
+	dd if=$(STAGE2) of=$(IMAGE) bs=512 seek=1 conv=notrunc
+	$(MAKEBOOT) $(IMAGE) $(STAGE1)
 
 debug: image
 	qemu-system-x86_64 -drive format=raw,file=$(IMAGE)
